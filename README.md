@@ -1,5 +1,7 @@
 # Inquirer Corrections
-A command-line Node.js tool for collecting JSON data corrections from a user. Inquirer is the application's primary dependency. 
+A command-line Node.js tool for collecting JSON data corrections from a user. Inquirer is the application's primary dependency.
+
+*NB*: This tool is not complete. It should run and complete some of its tasks, but others will break or simply not work.
 
 ## Prerequisites
 - Node.js
