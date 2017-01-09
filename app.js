@@ -3,11 +3,12 @@
 var fs = require('fs');
 var inquirer = require('inquirer');
 
-// Import constant values.
+// Import constant values and path values if provided.
 var cons = require('./constants.js');
 try {
-    var paths = require('./paths.js');
-} catch(e) {}
+    // var paths = require('./paths.js');
+} catch (e) {
+}
 
 // Initialize filename and data variables in global scope.
 var currentFileName;
@@ -274,10 +275,10 @@ function confirmID(ID) {
 
 function createNewEdge(edgeType) {
     var newID = Math.max.apply(null, currentEdgeIDs) + 1;
-    var newEdge = {
-        id: newID,
-        type_t0: edgeType
-    };
+    var newEdge = [
+        ['id', newID],
+        ['type_t0', edgeType]
+    ];
 
     // TODO: Insert questions about to and from here. Use currentNodeIDs as options for to/from values.
 
@@ -291,16 +292,24 @@ function createNewEdge(edgeType) {
 function createNewNode(nodeType) {
     var newID = currentData.nodes[0].reserved_ids[currentData.nodes[0].reserved_ids.length - 1] + 1;
 
-    var newNode = {
-        id: newID,
-        type_t0: nodeType
-    };
+    var newNode = [
+        ['id', newID],
+        ['type_t0', nodeType]
+    ];
 
-    if (Object.keys(cons.nodeVariables).indexOf(nodeType) !== -1) {
-        // TODO: Figure out how to iterate through all the variables and get values with inquirer.
+    if (nodeType === 'HIVService') {
+        inquirer.prompt({
+            name: 'newValue',
+            type: 'input',
+            message: 'What is the name of this service provider?'
+        }).then(function (answers) {
+            newNode.push(['name', answers.newValue]);
+            confirmCorrection(newNode);
+        })
+    } else {
+        confirmCorrection(newNode);
     }
 
-    confirmCorrection('Node creation', newNode);
 }
 
 function updateEdge(edge) {
@@ -367,40 +376,137 @@ function updateEdge(edge) {
 }
 
 function updateNode(node) {
-    // TODO: basically implement above, though it might be a tad simpler.
-    console.log(currentCorrectionType + node);
+    if (currentCorrectionType === 'Node deletion') {
+        inquirer.prompt({
+            name: 'confirmDelete',
+            type: 'confirm',
+            message: 'Are you sure you want to delete this node?'
+        }).then(function (answers) {
+            if (answers.confirmDelete) {
+                writeCorrectionToFile()
+            } else {
+                checkForMoreCorrections();
+            }
+        });
+    } else {
+        inquirer.prompt([
+            {
+                name: 'updateVariables',
+                type: 'checkbox',
+                message: 'Which variables would you like to update or remove?',
+                choices: Object.keys(node)
+            },
+            {
+                name: 'addVariablesConfirm',
+                type: 'confirm',
+                message: 'Are there any variables you would like to add to this this node?',
+                when: node.type_t0 === 'Ego'
+            },
+            {
+                name: 'addVariables',
+                type: 'checkbox',
+                message: 'Which variables would you like to add to this node?',
+                choices: function () {
+                    var choices = [];
+                    cons.egoVariables.forEach(function (variable) {
+                        if (Object.keys(node).indexOf(variable) === -1) {
+                            choices.push(variable);
+                        }
+                    });
+                    return choices;
+                },
+                when: function (answers) {
+                    return answers.addVariablesConfirm;
+                }
+            }]).then(function (answers) {
+
+            var variablesToModify;
+            var variablesProcessed = 0;
+            var corrections = [];
+
+            if (answers.addVariables) {
+                variablesToModify = answers.updateVariables.concat(answers.addVariables);
+            } else {
+                variablesToModify = answers.updateVariables;
+            }
+
+            console.log('\r\n(Omit an answer to indicate that the variable should be deleted.)\r\n');
+
+            getNewVariableValue(variablesProcessed, variablesToModify, corrections, node);
+
+        });
+    }
 }
 
 function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject) {
     if (loopCount < variables.length) {
         var variableName = variables[loopCount];
-        var currentVariableValue = dataObject[variableName];
+        if (dataObject) {
+            var currentVariableValue = dataObject[variableName];
+        }
         var newValue = '';
         var variableChangePrompt;
 
-        if (Object.keys(cons.variableLists).indexOf(variableName) !== -1) {
+        if (cons.tractVariables.indexOf(variableName) !== -1) {
+            variableChangePrompt = [
+                {
+                    name: 'newValue',
+                    type: 'list',
+                    choices: cons.variableLists[variableName],
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
+                },
+                {
+                    name: 'newTract',
+                    type: 'input',
+                    message: 'What census tract should ' + variableName + ' be set to? \ngeo_5jrd-6zik-',
+                    when: function (answers) {
+                        return answers.newValue === 'Census Tract';
+                    },
+                    validate: function (answer) {
+                        if (cons.chicagoCensusTracts.indexOf('geo_5jrd-6zik-' + answer) !== -1) {
+                            return true;
+                        } else {
+                            return 'Please enter only the portion of the census tract (as found in Network Canvas) that comes after "geo_5jrd-6zik-".';
+                        }
+                    }
+                }
+            ]
+        } else if (variableName === 'details') {
+            variableChangePrompt = {
+                name: 'newValue',
+                type: 'checkbox',
+                choices: cons.variableCheckboxes[dataObject.type],
+                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
+            }
+        } else if (Object.keys(cons.variableLists).indexOf(variableName) !== -1) {
             variableChangePrompt =
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['place', 'holder'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    choices: cons.variableLists[variableName],
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.string.indexOf(variableName) !== -1) {
             variableChangePrompt =
                 {
                     name: 'newValue',
                     type: 'input',
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should it be set to?'
-                    // no validate
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?'
                 }
         } else if (cons.variableTypes.positiveInt.indexOf(variableName) !== -1) {
             variableChangePrompt =
                 {
                     name: 'newValue',
                     type: 'input',
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should it be set to?'
-                    // posInt validate
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?',
+                    validate: function (answers) {
+                        var pattern = /\d+/;
+                        if (pattern.test(answers) && parseInt(answers, 10) >= 0) {
+                            return true;
+                        } else {
+                            return 'Please enter a non-negative whole number.';
+                        }
+                    }
                 }
         } else if (cons.variableTypes.negOneToThree.indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -408,7 +514,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     name: 'newValue',
                     type: 'list',
                     choices: ['-1', '0', '1', '2', '3'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.negOneToTwo.indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -416,7 +522,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     name: 'newValue',
                     type: 'list',
                     choices: ['-1', '0', '1', '2'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.zeroToSix.indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -424,15 +530,15 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     name: 'newValue',
                     type: 'list',
                     choices: ['0', '1', '2', '3', '4', '5', '6'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
-        } else if (cons.variableTypes.zeroToNine.indexOf(variableName) !== -1) {
+        } else if (cons.variableTypes.oneToNine.indexOf(variableName) !== -1) {
             variableChangePrompt =
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    choices: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.binary.indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -440,7 +546,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     name: 'newValue',
                     type: 'list',
                     choices: ['0', '1'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.boolean.indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -448,25 +554,67 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     name: 'newValue',
                     type: 'list',
                     choices: ['true', 'false'],
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'Which of the following should it be set to?'
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.date.indexOf(variableName) !== -1) {
             variableChangePrompt =
                 [
                     {
+                        name: 'newValue',
+                        type: 'list',
+                        choices: ['null', 'Date'],
+                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?',
+                        when: variableName === 'sex_first_t0'
+                    },
+                    {
                         name: 'month',
                         type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should the MONTH be set to? (MM)'
+                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the MONTH be set to? (MM)',
+                        validate: function (answers) {
+                            var pattern = /\d\d/;
+                            if (pattern.test(answers) && parseInt(answers, 10) <= 12 && parseInt(answers, 10) >= 1) {
+                                return true;
+                            } else {
+                                return 'Please enter a valid month in the format "MM".';
+                            }
+                        },
+                        when: function (answers) {
+                            return variableName === 'sex_last_t0' || answers.newValue === 'Date';
+                        }
                     },
                     {
                         name: 'day',
                         type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should the DAY be set to? (DD)'
+                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the DAY be set to? (DD)',
+                        validate: function (answers) {
+                            var pattern = /\d\d/;
+                            if (pattern.test(answers) && parseInt(answers, 10) <= 31 && parseInt(answers, 10) >= 1) {
+                                return true;
+                            } else {
+                                return 'Please enter a valid day in the format "DD".';
+                            }
+                        },
+                        when: function (answers) {
+                            return variableName === 'sex_last_t0' || answers.newValue === 'Date';
+                        }
+
                     },
                     {
                         name: 'year',
                         type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should the YEAR be set to? (YYYY)'
+                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the YEAR be set to? (YYYY)',
+                        validate: function (answers) {
+                            var pattern = /\d\d\d\d/;
+                            var maxYear = new Date().getFullYear();
+                            if (pattern.test(answers) && parseInt(answers, 10) <= maxYear && parseInt(answers, 10) >= 1900) {
+                                return true;
+                            } else {
+                                return 'Please enter a valid year in the format "YYYY".';
+                            }
+                        },
+                        when: function (answers) {
+                            return variableName === 'sex_last_t0' || answers.newValues === 'Date';
+                        }
                     }
                 ];
         } else {
@@ -474,18 +622,18 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'input',
-                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\n' + 'What should it be set to?'
-                    // no validate
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?'
                 }
         }
-        // TODO: Add checkbox items.
 
         inquirer.prompt(variableChangePrompt).then(
             function (answers) {
-                if (answers.newValue) {
-                    newValue = answers.newValue;
+                if (answers.newValue === 'Date') {
+                    newValue = answers.month + '/' + answers.day + '/' + answers.year
+                } else if (answers.newValue === 'Census Tract') {
+                    newValue = 'geo_5jrd-6zik-' + answers.newTract;
                 } else {
-                    newValue = answers.month + answers.day + answers.year
+                    newValue = answers.newValue;
                 }
 
                 correctionsSoFar.push([variableName, newValue]);
