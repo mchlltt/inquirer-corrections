@@ -1,14 +1,15 @@
 // TODO: Add way to browse and remove existing corrections.
+
 // Load NPM packages.
 var fs = require('fs');
 var inquirer = require('inquirer');
 
-// Import constant values and path values if provided.
+// Import constant values and path values (if provided).
 var cons = require('./constants.js');
-try {
-    // var paths = require('./paths.js');
-} catch (e) {
-}
+// try {
+//     var paths = require('./paths.js');
+// } catch (e) {
+// }
 
 // Initialize filename and data variables in global scope.
 var currentFileName;
@@ -18,9 +19,12 @@ var currentEdgeIDs;
 var objectID;
 var currentCorrectionType;
 
+// Run initial prompt.
 getIdentifyingData();
 
+// Initial prompt that takes ID and visit number.
 function getIdentifyingData() {
+    // Initialize/empty these global variables.
     currentFileName = '';
     currentData = {};
     currentEdgeIDs = [];
@@ -29,6 +33,7 @@ function getIdentifyingData() {
     inquirer.prompt(cons.fileIdentifyingQuestions).then(findFiles);
 }
 
+// Searches for files that parameters given.
 function findFiles(answers) {
     var idPattern;
     var visitPattern = new RegExp('(V' + answers.visitNumber + ')');
@@ -67,6 +72,7 @@ function findFiles(answers) {
     });
 }
 
+// Ask the user to select between matching files.
 function confirmFile(files, path) {
     if (files.length === 0) {
         console.log('No files found. Let\'s start over.');
@@ -93,6 +99,7 @@ function confirmFile(files, path) {
     }
 }
 
+// Read in selected file.
 function loadFile(answers, files, path) {
     if (answers.selectBetween) {
         currentFileName = path + answers.selectBetween;
@@ -146,8 +153,13 @@ function loadFile(answers, files, path) {
     }
 }
 
+// Ask the user which kind of correction they want to make + other basic info.
 function chooseCorrection() {
-    //noinspection JSUnusedGlobalSymbols
+    var intID;
+    if (typeof(currentData.sessionParameters) !== 'undefined') {
+        intID = currentData.sessionParameters.interviewerID;
+    }
+
     var inspectionQuestions = [
         {
             name: 'correctionType',
@@ -194,7 +206,7 @@ function chooseCorrection() {
         {
             name: 'newInterviewerID',
             type: 'input',
-            message: 'The current interviewer ID is ' + currentData.sessionParameters.interviewerID + '.\n' + 'What should it be changed to?',
+            message: 'The current interviewer ID is ' + intID + '.\n' + 'What should it be changed to?',
             when: function (answers) {
                 return answers.correctionType === 'Interviewer ID update';
             },
@@ -240,6 +252,7 @@ function chooseCorrection() {
     });
 }
 
+// If an edge or node ID was given, show the user the object they selected and confirm that it is the object they want to correct.
 function confirmID(ID) {
     var idConfirmQuestion;
     var currentObject;
@@ -273,22 +286,125 @@ function confirmID(ID) {
     });
 }
 
+// Creates base edge and determines which other variables will be added. Begin recursion through these variables.
 function createNewEdge(edgeType) {
+    // TODO: Deal with making multiple new edges!
     var newID = Math.max.apply(null, currentEdgeIDs) + 1;
     var newEdge = [
         ['id', newID],
         ['type_t0', edgeType]
     ];
 
-    // TODO: Insert questions about to and from here. Use currentNodeIDs as options for to/from values.
+    inquirer.prompt(
+        [
+            {
+                name: 'from',
+                type: 'list',
+                message: 'Who is this edge `from`?',
+                choices: currentNodeIDs.concat('Other node id')
+            },
+            {
+                name: 'otherFrom',
+                type: 'input',
+                message: 'Who is this edge `from`?',
+                when: function(answers) {
+                    return answers.from === 'Other node id';
+                },
+                validate: function(answer) {
+                    var pattern = /\d+/;
+                    if (pattern.test(answer) && currentNodeIDs.indexOf(answer) === -1) {
+                        return true;
+                    } else {
+                        return 'Please enter a valid node ID that was not in the list provided.';
+                    }
+                }
+            },
+            {
+                name: 'to',
+                type: 'list',
+                message: 'Who is this edge `to`?',
+                choices: function(answers) {
+                    // 'to' cannot be '0' or the same as 'from'
+                    function isValidToValue(id) {
+                        return id !== answers.from && id !== '0';
+                    }
 
-    if (Object.keys(cons.edgeVariables).indexOf(edgeType) !== -1) {
-        // TODO: Go through the other variables.
-    }
+                    // Give the option to manually enter `to`, since a new node may have been created.
+                    return currentNodeIDs.filter(isValidToValue).concat('Other node id');
+                }
+            },
+            {
+                name: 'otherTo',
+                type: 'input',
+                message: 'Who is this edge `to`?',
+                when: function(answers) {
+                    return answers.to === 'Other node id';
+                },
+                validate: function(answer, answers) {
+                    var pattern = /\d+/;
+                    // test that the answer is a positive integer, not 0, not already in the list given, and
+                    // not the same as the `otherFrom` value. `from` value test not needed because that would be in the list.
+                    if (pattern.test(answer) &&
+                        currentNodeIDs.indexOf(answer) === -1 &&
+                        answer !== '0' &&
+                        answer !== answers.otherFrom) {
+                        return true;
+                    } else {
+                        return 'Please enter a valid node ID that was not in the list provided.';
+                    }
+                }
+            }
+        ]
+    ).then(function(answers) {
+        // Add `to` to the edge.
+        if (answers.otherTo) {
+            newEdge.push(['to', answers.otherTo]);
+        } else {
+            newEdge.push(['to', answers.to]);
+        }
 
-    confirmCorrection('Edge creation', newEdge);
+        // Add `from` to the edge.
+        if (answers.otherFrom) {
+            newEdge.push(['from', answers.otherFrom]);
+        } else {
+            newEdge.push(['from', answers.from]);
+        }
+
+        // If this edge has variables other than id/type/to/from, grab those.
+        if (Object.keys(cons.edgeVariables).indexOf(edgeType) !== -1) {
+            var requiredVars = cons.edgeVariables[edgeType].required;
+            var optionalVars = cons.edgeVariables[edgeType].optional;
+        }
+
+        inquirer.prompt(
+            {
+                name: 'optionalVariables',
+                type: 'checkbox',
+                message: 'Which, if any, of the following optional variables you would like to add to this this edge? \nHit enter to select none.',
+                when: typeof(optionalVars) !== 'undefined',
+                choices: optionalVars
+            }).then(function (answers) {
+
+            var optionalVars = answers.optionalVariables;
+            var variablesToAdd;
+            var variablesProcessed = 0;
+
+            if (optionalVars && requiredVars) {
+                variablesToAdd = requiredVars.concat(answers.optionalVariables);
+            } else if (optionalVars) {
+                variablesToAdd = optionalVars;
+            } else if (requiredVars) {
+                variablesToAdd = requiredVars;
+            } else {
+                confirmCorrection(newEdge);
+            }
+
+            getNewVariableValue(variablesProcessed, variablesToAdd, newEdge);
+        });
+    });
 }
 
+// Creates node edge and determines which other variables will be added. Begin recursion through these variables.
 function createNewNode(nodeType) {
     var newID = currentData.nodes[0].reserved_ids[currentData.nodes[0].reserved_ids.length - 1] + 1;
 
@@ -312,6 +428,7 @@ function createNewNode(nodeType) {
 
 }
 
+// Confirm edge deletion OR determine which variables will be updated/added/removed. Begin recursion through these variables.
 function updateEdge(edge) {
     if (currentCorrectionType === 'Edge deletion') {
         inquirer.prompt({
@@ -375,6 +492,7 @@ function updateEdge(edge) {
     }
 }
 
+// Confirm node deletion OR determine which variables will be updated/added/removed. Begin recursion through these variables.
 function updateNode(node) {
     if (currentCorrectionType === 'Node deletion') {
         inquirer.prompt({
@@ -438,6 +556,8 @@ function updateNode(node) {
     }
 }
 
+// Recursively accumulate new variable values for all needed variables. When all variables have been assigned new values,
+// pass the accumulated data to confirmCorrections.
 function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject) {
     if (loopCount < variables.length) {
         var variableName = variables[loopCount];
@@ -628,7 +748,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
 
         inquirer.prompt(variableChangePrompt).then(
             function (answers) {
-                if (answers.newValue === 'Date') {
+                if (answers.year) {
                     newValue = answers.month + '/' + answers.day + '/' + answers.year
                 } else if (answers.newValue === 'Census Tract') {
                     newValue = 'geo_5jrd-6zik-' + answers.newTract;
@@ -647,6 +767,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
     }
 }
 
+// Display the correction to the user and confirm whether it is correct.
 function confirmCorrection(correction) {
     inquirer.prompt({
         name: 'changeApproval',
@@ -662,15 +783,15 @@ function confirmCorrection(correction) {
     });
 }
 
+// If the correction was confirmed, add it to corrections.json.
 function writeCorrectionToFile(correction) {
     var newCorrection = {
         type: currentCorrectionType,
-        filename: currentFileName,
         id: objectID,
         correctData: correction
     };
 
-    var currentCorrections = [];
+    var currentCorrections = {};
     var correctionFile;
 
     if (typeof(paths) !== 'undefined') {
@@ -685,7 +806,12 @@ function writeCorrectionToFile(correction) {
         }
 
         currentCorrections = JSON.parse(data);
-        currentCorrections.push(newCorrection);
+
+        if (Object.keys(currentCorrections).indexOf(currentFileName) === -1) {
+            currentCorrections[currentFileName] = [newCorrection];
+        } else {
+            currentCorrections[currentFileName].push(newCorrection);
+        }
 
         fs.writeFile(correctionFile, JSON.stringify(currentCorrections, null, 2));
     });
@@ -693,8 +819,8 @@ function writeCorrectionToFile(correction) {
     checkForMoreCorrections();
 }
 
+// After a correction is saved, ask the user for more corrections to this or other files. Pipe back as necessary.
 function checkForMoreCorrections() {
-    //noinspection JSUnusedGlobalSymbols
     inquirer.prompt([
         {
             name: 'thisFileCorrections',

@@ -1,11 +1,12 @@
 module.exports = {
+    // Questions used to identify which file should be examined.
     fileIdentifyingQuestions: [
         {
             name: 'radarID',
             type: 'input',
             message: 'What is the RADAR ID on the file you would like to correct?',
             validate: function (response) {
-                var pattern = /\d\d\d\d/;
+                var pattern = /^\d\d\d\d$/;
                 if (pattern.test(response)) {
                     return true;
                 } else {
@@ -36,6 +37,7 @@ module.exports = {
         }
     ],
 
+    // List of kinds of corrections that can be made.
     correctionChoices: [
         'Node update',
         'Edge update',
@@ -47,6 +49,7 @@ module.exports = {
         'Remove interview from analysis'
     ],
 
+    // List of node types.
     nodeTypes: [
         'Alter',
         'HIVService',
@@ -54,6 +57,7 @@ module.exports = {
         'App'
     ],
 
+    // List of edge types.
     edgeTypes: [
         'Dyad',
         'Role',
@@ -73,11 +77,14 @@ module.exports = {
         'HadTreatment'
     ],
 
+    // List of Ego node variables. NB: The only other kind of node with variables beyond type_t0/id is HIVService,
+    // which only has `name` added, so that was easier to just hard code in.
     egoVariables: [
         'int_date_t0', 'int_stime_t0', 'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0',
         'd7_t0', 'd8_t0', 'd9_t0', 'd10_t0', 'res_chicago_location_t0', 'hiv_health', 'multiple_sex_t0'
     ],
 
+    // List of edge types with variables other than to/from/type/id. Separated by required/optional variables.
     edgeVariables: {
         Dyad: {
             required: [
@@ -152,6 +159,7 @@ module.exports = {
         }
     },
 
+    // Sorts variables by their response types.
     variableTypes: {
         string: [
             'nname_t0', 'fname_t0', 'lname_t0', 'label', 'name', 'gender_p_other_t0', 'race_p_other_t0',
@@ -162,8 +170,8 @@ module.exports = {
             'vaginal_sex_freq_t0', 'vaginal_sex_condom_freq_t0'
         ],
         negOneToThree: [
-            'comm_t0', 'd1_freq_t0', 'd2_freq_t0', 'd3_freq_t0', 'd4_freq_t0', 'd5_freq_t0',
-            'd6_freq_t0', 'd7_freq_t0', 'd8_freq_t0', 'd9_freq_t0', 'd10_freq_t0',
+            'comm_t0', 'd1_freq_p_t0', 'd2_freq_p_t0', 'd3_freq_p_t0', 'd4_freq_p_t0', 'd5_freq_p_t0',
+            'd6_freq_p_t0', 'd7_freq_p_t0', 'd8_freq_p_t0', 'd9_freq_p_t0', 'd10_freq_p_t0',
             'venue_freq_t0', 'app_freq_t0', 'welcoming', 'visit_frequency'
         ],
         negOneToTwo: [
@@ -187,6 +195,7 @@ module.exports = {
         ]
     },
 
+    // For variables with a set of options, these options are provided.
     variableLists: {
         seed_status_t0: [
             'Non-Seed',
@@ -305,12 +314,14 @@ module.exports = {
         ]
     },
 
+    // Variables for which 'Census Tract' may be selected, requiring additional flow logic.
     tractVariables: [
         'res_chicago_location_t0',
         'res_chicago_location_p_t0',
         'location'
     ],
 
+    // For HadTreatment/etc. edges, the options are provided here.
     variableCheckboxes: {
         HadTesting: [
             'HIV testing',
@@ -334,6 +345,7 @@ module.exports = {
         ]
     },
 
+    // Potential Chicago census tracts, for validating census tracts.
     chicagoCensusTracts: [
         "geo_5jrd-6zik-1.1",
         "geo_5jrd-6zik-1.2",
