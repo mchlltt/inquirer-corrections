@@ -6,10 +6,10 @@ var inquirer = require('inquirer');
 
 // Import constant values and path values (if provided).
 var cons = require('./constants.js');
-// try {
-//     var paths = require('./paths.js');
-// } catch (e) {
-// }
+try {
+    var paths = require('./paths.js');
+} catch (e) {
+}
 
 // Initialize filename and data variables in global scope.
 var currentFileName;
@@ -160,6 +160,8 @@ function chooseCorrection() {
         intID = currentData.sessionParameters.interviewerID;
     }
 
+    objectID = null;
+
     var inspectionQuestions = [
         {
             name: 'correctionType',
@@ -234,18 +236,22 @@ function chooseCorrection() {
 
     inquirer.prompt(inspectionQuestions).then(function (answers) {
         currentCorrectionType = answers.correctionType;
+        console.log(answers.correctionType);
+
         if (answers.edgeNumber) {
             confirmID(answers.edgeNumber);
         } else if (answers.nodeNumber) {
             confirmID(answers.nodeNumber);
         } else if (answers.newNodeType) {
-            createNewNode(answers.newNodeType);
+            createNode(answers.newNodeType);
         } else if (answers.newEdgeType) {
-            createNewEdge(answers.newEdgeType);
+            createEdge(answers.newEdgeType);
         } else if (answers.newInterviewerID) {
-            writeCorrectionToFile(answers.newInterviewerID);
+            writeCorrectionToFile({interviewerID: answers.newInterviewerID});
         } else if (answers.confirmRemoval) {
             writeCorrectionToFile();
+        } else if (answers.correctionType === 'Renumber nodes/edges') {
+            renumberIDs();
         } else {
             getIdentifyingData();
         }
@@ -286,14 +292,34 @@ function confirmID(ID) {
     });
 }
 
+// If previous data is loaded incorrectly, duplicate node IDs for different alters may occur. Thus, we increment the
+// IDs of alters elicited during the problematic interview, to make sure there is no overlap.
+function renumberIDs() {
+    inquirer.prompt([
+        {
+            name: 'start',
+            type: 'list',
+            choices: currentNodeIDs.filter(function(id) {return id !== '0'}),
+            message: 'Which is the first node that needs to be renumbered?'
+        },
+        {
+            name: 'offset',
+            type: 'input',
+            message: 'What number needs to be added to each affected node ID?'
+        }
+    ]).then(function(answers) {
+        confirmCorrection({
+            start: answers.start,
+            offset: answers.offset
+        });
+    });
+}
+
 // Creates base edge and determines which other variables will be added. Begin recursion through these variables.
-function createNewEdge(edgeType) {
-    // TODO: Deal with making multiple new edges!
-    var newID = Math.max.apply(null, currentEdgeIDs) + 1;
-    var newEdge = [
-        ['id', newID],
-        ['type_t0', edgeType]
-    ];
+function createEdge(edgeType) {
+    var newEdge = {
+        type: edgeType
+    };
 
     inquirer.prompt(
         [
@@ -358,16 +384,16 @@ function createNewEdge(edgeType) {
     ).then(function(answers) {
         // Add `to` to the edge.
         if (answers.otherTo) {
-            newEdge.push(['to', answers.otherTo]);
+            newEdge.to = answers.otherTo;
         } else {
-            newEdge.push(['to', answers.to]);
+            newEdge.to = answers.to;
         }
 
         // Add `from` to the edge.
         if (answers.otherFrom) {
-            newEdge.push(['from', answers.otherFrom]);
+            newEdge.from = answers.otherFrom;
         } else {
-            newEdge.push(['from', answers.from]);
+            newEdge.from = answers.from;
         }
 
         // If this edge has variables other than id/type/to/from, grab those.
@@ -380,7 +406,7 @@ function createNewEdge(edgeType) {
             {
                 name: 'optionalVariables',
                 type: 'checkbox',
-                message: 'Which, if any, of the following optional variables you would like to add to this this edge? \nHit enter to select none.',
+                message: 'Which, if any, of the following optional variables you would like to add to this this edge?',
                 when: typeof(optionalVars) !== 'undefined',
                 choices: optionalVars
             }).then(function (answers) {
@@ -405,21 +431,20 @@ function createNewEdge(edgeType) {
 }
 
 // Creates node edge and determines which other variables will be added. Begin recursion through these variables.
-function createNewNode(nodeType) {
-    var newID = currentData.nodes[0].reserved_ids[currentData.nodes[0].reserved_ids.length - 1] + 1;
+function createNode(nodeType) {
+    objectID = currentData.nodes[0].reserved_ids[currentData.nodes[0].reserved_ids.length - 1] + 1;
 
-    var newNode = [
-        ['id', newID],
-        ['type_t0', nodeType]
-    ];
+    var newNode = {
+        type_t0: nodeType
+    };
 
     if (nodeType === 'HIVService') {
         inquirer.prompt({
-            name: 'newValue',
+            name: 'name',
             type: 'input',
             message: 'What is the name of this service provider?'
         }).then(function (answers) {
-            newNode.push(['name', answers.newValue]);
+            newNode.name = answers.name;
             confirmCorrection(newNode);
         })
     } else {
@@ -476,7 +501,7 @@ function updateEdge(edge) {
 
             var variablesToModify;
             var variablesProcessed = 0;
-            var corrections = [];
+            var corrections = {};
 
             if (answers.addVariables) {
                 variablesToModify = answers.updateVariables.concat(answers.addVariables);
@@ -540,7 +565,7 @@ function updateNode(node) {
 
             var variablesToModify;
             var variablesProcessed = 0;
-            var corrections = [];
+            var corrections = {};
 
             if (answers.addVariables) {
                 variablesToModify = answers.updateVariables.concat(answers.addVariables);
@@ -756,7 +781,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     newValue = answers.newValue;
                 }
 
-                correctionsSoFar.push([variableName, newValue]);
+                correctionsSoFar[variableName] =  newValue;
                 loopCount += 1;
                 getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
             }
@@ -787,9 +812,12 @@ function confirmCorrection(correction) {
 function writeCorrectionToFile(correction) {
     var newCorrection = {
         type: currentCorrectionType,
-        id: objectID,
         correctData: correction
     };
+
+    if (objectID) {
+        newCorrection.id = objectID;
+    }
 
     var currentCorrections = {};
     var correctionFile;

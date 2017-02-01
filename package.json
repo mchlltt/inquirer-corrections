@@ -1,13 +1,13 @@
 {
-  "name": "inquire-corrections",
+  "name": "inquirer-corrections",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "mchlltt",
+  "license": "MIT",
   "dependencies": {
     "inquirer": "^2.0.0"
   }

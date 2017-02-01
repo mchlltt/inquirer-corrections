@@ -46,7 +46,8 @@ module.exports = {
         'Node creation',
         'Edge creation',
         'Interviewer ID update',
-        'Remove interview from analysis'
+        'Remove interview from analysis',
+        'Renumber nodes/edges'
     ],
 
     // List of node types.
