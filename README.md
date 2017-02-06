@@ -1,7 +1,7 @@
 # Inquirer Corrections
-A command-line Node.js tool for collecting JSON data corrections from a user. Inquirer is the application's primary dependency.
+A command-line Node.js tool for collecting JSON data corrections from a user. Inquirer.js is the application's primary dependency.
 
-*NB*: This tool is not complete. It should run and complete some of its tasks, but others will break or simply not work.
+*NB*: This tool is almost but not entirely complete. It should not be used in earnest at this point.
 
 ## Prerequisites
 - [Node.js/npm](https://nodejs.org/en/download/)
@@ -28,4 +28,4 @@ Mich Elliott - [mchlltt](http://github.com/mchlltt)
 - [Inquirer.js](https://github.com/SBoudrias/Inquirer.js/)
 
 ## Acknowledgements
-My time working on this project is funded by Northwestern University's [Institute for Sexual and Gender Minority Health and Wellbeing](http://isgmh.northwestern.edu/). Visit the RADAR Project's [DokuWiki Codebook](http://codebook.netcanvas-r.com/doku.php?id=radar:start) if you are interested in the study collecting the kind of data shown in the synthetic data.
+My time working on this project is funded by the NIH via Northwestern University's [Institute for Sexual and Gender Minority Health and Wellbeing](http://isgmh.northwestern.edu/). Visit the RADAR Project's [DokuWiki Codebook](http://codebook.netcanvas-r.com/doku.php?id=radar:start) if you are interested in the study collecting the kind of data shown in the synthetic data.
