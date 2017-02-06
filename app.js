@@ -1,4 +1,5 @@
 // TODO: Add way to browse and remove existing corrections.
+// TODO: Figure out how to represent variables that should be deleted.
 
 // Load NPM packages.
 var fs = require('fs');
@@ -8,8 +9,7 @@ var inquirer = require('inquirer');
 var cons = require('./constants.js');
 try {
     var paths = require('./paths.js');
-} catch (e) {
-}
+} catch (e) {}
 
 // Initialize filename and data variables in global scope.
 var currentFileName;
@@ -166,25 +166,25 @@ function chooseCorrection() {
         {
             name: 'correctionType',
             type: 'list',
-            message: 'What is the first kind of correction you would like to make to this file?',
+            message: 'What is the kind of correction you would like to make to this file?',
             choices: cons.correctionChoices
         },
         {
             name: 'edgeNumber',
             type: 'list',
-            message: 'What is the ID on the edge would you like to correct or delete?',
+            message: 'What is the ID on the edge would you like to correct?',
             choices: currentEdgeIDs,
             when: function (answers) {
-                return answers.correctionType === 'Edge update' || answers.correctionType === 'Edge deletion';
+                return answers.correctionType === 'Edge update';
             }
         },
         {
             name: 'nodeNumber',
             type: 'list',
-            message: 'What is the ID on the node you would like to correct or delete?',
+            message: 'What is the ID on the node you would like to correct?',
             choices: currentNodeIDs,
             when: function (answers) {
-                return answers.correctionType === 'Node update' || answers.correctionType === 'Node deletion';
+                return answers.correctionType === 'Node update';
             }
         },
         {
@@ -236,7 +236,6 @@ function chooseCorrection() {
 
     inquirer.prompt(inspectionQuestions).then(function (answers) {
         currentCorrectionType = answers.correctionType;
-        console.log(answers.correctionType);
 
         if (answers.edgeNumber) {
             confirmID(answers.edgeNumber);
@@ -246,6 +245,8 @@ function chooseCorrection() {
             createNode(answers.newNodeType);
         } else if (answers.newEdgeType) {
             createEdge(answers.newEdgeType);
+        } else if (currentCorrectionType === 'Node deletion' || currentCorrectionType === 'Edge deletion') {
+            deleteObjects();
         } else if (answers.newInterviewerID) {
             writeCorrectionToFile({interviewerID: answers.newInterviewerID});
         } else if (answers.confirmRemoval) {
@@ -292,8 +293,10 @@ function confirmID(ID) {
     });
 }
 
-// If previous data is loaded incorrectly, duplicate node IDs for different alters may occur. Thus, we increment the
-// IDs of alters elicited during the problematic interview, to make sure there is no overlap.
+/*
+ If previous data is loaded incorrectly, duplicate node IDs for different alters may occur. Thus, we increment the
+ IDs of alters elicited during the problematic interview, to make sure there is no overlap.
+ */
 function renumberIDs() {
     inquirer.prompt([
         {
@@ -453,136 +456,147 @@ function createNode(nodeType) {
 
 }
 
-// Confirm edge deletion OR determine which variables will be updated/added/removed. Begin recursion through these variables.
-function updateEdge(edge) {
+// Determine which nodes or edges to delete.
+function deleteObjects() {
+    var deletePrompt;
+
     if (currentCorrectionType === 'Edge deletion') {
-        inquirer.prompt({
-            name: 'confirmDelete',
-            type: 'confirm',
-            message: 'Are you sure you want to delete this edge?'
-        }).then(function (answers) {
-            if (answers.confirmDelete) {
-                writeCorrectionToFile()
-            } else {
-                checkForMoreCorrections();
-            }
-        });
-    } else {
-        inquirer.prompt([
-            {
-                name: 'updateVariables',
-                type: 'checkbox',
-                message: 'Which variables would you like to update or remove?',
-                choices: Object.keys(edge)
-            },
-            {
-                name: 'addVariablesConfirm',
-                type: 'confirm',
-                message: 'Are there any variables you would like to add to this this edge?',
-                when: typeof(cons.edgeVariables[edge.type].optional) !== 'undefined'
-            },
-            {
-                name: 'addVariables',
-                type: 'checkbox',
-                message: 'Which variables would you like to add to this edge?',
-                choices: function () {
-                    var choices = [];
-                    cons.edgeVariables[edge.type].optional.forEach(function (variable) {
-                        if (Object.keys(edge).indexOf(variable) === -1) {
-                            choices.push(variable);
-                        }
-                    });
-                    return choices;
-                },
-                when: function (answers) {
-                    return answers.addVariablesConfirm;
+        deletePrompt = {
+            name: 'toDelete',
+            type: 'checkbox',
+            message: 'Which edges would you like to delete? Select all that apply.',
+            choices: currentEdgeIDs,
+            validate: function(response) {
+                if (response.length > 0) {
+                    return true;
+                } else {
+                    return 'Please select at least one edge to delete.'
                 }
-            }]).then(function (answers) {
-
-            var variablesToModify;
-            var variablesProcessed = 0;
-            var corrections = {};
-
-            if (answers.addVariables) {
-                variablesToModify = answers.updateVariables.concat(answers.addVariables);
-            } else {
-                variablesToModify = answers.updateVariables;
             }
-
-            console.log('\r\n(Omit an answer to indicate that the variable should be deleted.)\r\n');
-
-            getNewVariableValue(variablesProcessed, variablesToModify, corrections, edge);
-
-        });
+        };
+    } else {
+        deletePrompt = {
+            name: 'toDelete',
+            type: 'checkbox',
+            message: 'Which nodes would you like to delete? Select all that apply.',
+            choices: currentNodeIDs.filter(function(id) {return id !== '0'}),
+            validate: function(response) {
+                if (response.length > 0) {
+                    return true;
+                } else {
+                    return 'Please select at least one node to delete.'
+                }
+            }
+        }
     }
+
+    inquirer.prompt(deletePrompt).then( function(answers) {
+            confirmCorrection({
+                ids: answers.toDelete
+            })
+        }
+    )
 }
 
-// Confirm node deletion OR determine which variables will be updated/added/removed. Begin recursion through these variables.
+// Determine which variables will be updated/added/removed. Begin recursion through these variables.
+function updateEdge(edge) {
+    inquirer.prompt([
+        {
+            name: 'updateVariables',
+            type: 'checkbox',
+            message: 'Which variables would you like to update or remove?',
+            choices: Object.keys(edge)
+        },
+        {
+            name: 'addVariablesConfirm',
+            type: 'confirm',
+            message: 'Are there any variables you would like to add to this this edge?',
+            when: typeof(cons.edgeVariables[edge.type].optional) !== 'undefined'
+        },
+        {
+            name: 'addVariables',
+            type: 'checkbox',
+            message: 'Which variables would you like to add to this edge?',
+            choices: function () {
+                var choices = [];
+                cons.edgeVariables[edge.type].optional.forEach(function (variable) {
+                    if (Object.keys(edge).indexOf(variable) === -1) {
+                        choices.push(variable);
+                    }
+                });
+                return choices;
+            },
+            when: function (answers) {
+                return answers.addVariablesConfirm;
+            }
+        }]).then(function (answers) {
+
+        var variablesToModify;
+        var variablesProcessed = 0;
+        var corrections = {};
+
+        if (answers.addVariables) {
+            variablesToModify = answers.updateVariables.concat(answers.addVariables);
+        } else {
+            variablesToModify = answers.updateVariables;
+        }
+
+        getNewVariableValue(variablesProcessed, variablesToModify, corrections, edge);
+    });
+}
+
+// Determine which variables will be updated/added/removed. Begin recursion through these variables.
 function updateNode(node) {
-    if (currentCorrectionType === 'Node deletion') {
-        inquirer.prompt({
-            name: 'confirmDelete',
+    inquirer.prompt([
+        {
+            name: 'updateVariables',
+            type: 'checkbox',
+            message: 'Which variables would you like to update or remove?',
+            choices: Object.keys(node)
+        },
+        {
+            name: 'addVariablesConfirm',
             type: 'confirm',
-            message: 'Are you sure you want to delete this node?'
-        }).then(function (answers) {
-            if (answers.confirmDelete) {
-                writeCorrectionToFile()
-            } else {
-                checkForMoreCorrections();
-            }
-        });
-    } else {
-        inquirer.prompt([
-            {
-                name: 'updateVariables',
-                type: 'checkbox',
-                message: 'Which variables would you like to update or remove?',
-                choices: Object.keys(node)
+            message: 'Are there any variables you would like to add to this this node?',
+            when: node.type_t0 === 'Ego'
+        },
+        {
+            name: 'addVariables',
+            type: 'checkbox',
+            message: 'Which variables would you like to add to this node?',
+            choices: function () {
+                var choices = [];
+                cons.egoVariables.forEach(function (variable) {
+                    if (Object.keys(node).indexOf(variable) === -1) {
+                        choices.push(variable);
+                    }
+                });
+                return choices;
             },
-            {
-                name: 'addVariablesConfirm',
-                type: 'confirm',
-                message: 'Are there any variables you would like to add to this this node?',
-                when: node.type_t0 === 'Ego'
-            },
-            {
-                name: 'addVariables',
-                type: 'checkbox',
-                message: 'Which variables would you like to add to this node?',
-                choices: function () {
-                    var choices = [];
-                    cons.egoVariables.forEach(function (variable) {
-                        if (Object.keys(node).indexOf(variable) === -1) {
-                            choices.push(variable);
-                        }
-                    });
-                    return choices;
-                },
-                when: function (answers) {
-                    return answers.addVariablesConfirm;
-                }
-            }]).then(function (answers) {
-
-            var variablesToModify;
-            var variablesProcessed = 0;
-            var corrections = {};
-
-            if (answers.addVariables) {
-                variablesToModify = answers.updateVariables.concat(answers.addVariables);
-            } else {
-                variablesToModify = answers.updateVariables;
+            when: function (answers) {
+                return answers.addVariablesConfirm;
             }
+        }]).then(function (answers) {
 
-            console.log('\r\n(Omit an answer to indicate that the variable should be deleted.)\r\n');
+        var variablesToModify;
+        var variablesProcessed = 0;
+        var corrections = {};
 
-            getNewVariableValue(variablesProcessed, variablesToModify, corrections, node);
+        if (answers.addVariables) {
+            variablesToModify = answers.updateVariables.concat(answers.addVariables);
+        } else {
+            variablesToModify = answers.updateVariables;
+        }
 
-        });
-    }
+        getNewVariableValue(variablesProcessed, variablesToModify, corrections, node);
+
+    });
 }
 
-// Recursively accumulate new variable values for all needed variables. When all variables have been assigned new values,
-// pass the accumulated data to confirmCorrections.
+/*
+ Recursively accumulate new variable values for all needed variables. When all variables have been assigned
+ new values, pass the accumulated data to confirmCorrections.
+ */
 function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject) {
     if (loopCount < variables.length) {
         var variableName = variables[loopCount];
@@ -617,11 +631,27 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 }
             ]
         } else if (variableName === 'details') {
-            variableChangePrompt = {
+            variableChangePrompt =
+                {
+                    name: 'newValue',
+                    type: 'checkbox',
+                    choices: cons.variableCheckboxes[dataObject.type],
+                    message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
+                }
+        } else if (variableName === 'radar_id') {
+        variableChangePrompt =
+            {
                 name: 'newValue',
-                type: 'checkbox',
-                choices: cons.variableCheckboxes[dataObject.type],
-                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
+                type: 'input',
+                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?',
+                validate: function (response) {
+                    var pattern = /^\d\d\d\d$/;
+                    if (pattern.test(response)) {
+                        return true;
+                    } else {
+                        return 'Please enter 4 digits.';
+                    }
+                }
             }
         } else if (Object.keys(cons.variableLists).indexOf(variableName) !== -1) {
             variableChangePrompt =
@@ -781,6 +811,11 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     newValue = answers.newValue;
                 }
 
+                // Test equality *with* type coercion. Leave RADAR IDs as strings.
+                if (newValue == parseInt(newValue, 10) && variableName !== 'radar_id') {
+                    newValue = parseInt(newValue, 10);
+                }
+
                 correctionsSoFar[variableName] =  newValue;
                 loopCount += 1;
                 getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
@@ -797,7 +832,7 @@ function confirmCorrection(correction) {
     inquirer.prompt({
         name: 'changeApproval',
         type: 'confirm',
-        message: JSON.stringify(correction, null, 2) + '\nIs this change correct?'
+        message: currentCorrectionType + '\n' + JSON.stringify(correction, null, 2) + '\nIs this change correct?'
     }).then(function (answers) {
         if (answers.changeApproval) {
             writeCorrectionToFile(correction);

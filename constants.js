@@ -81,7 +81,7 @@ module.exports = {
     // List of Ego node variables. NB: The only other kind of node with variables beyond type_t0/id is HIVService,
     // which only has `name` added, so that was easier to just hard code in.
     egoVariables: [
-        'int_date_t0', 'int_stime_t0', 'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0',
+        'radar_id', 'int_date_t0', 'int_stime_t0', 'int_ftime_t0', 'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0',
         'd7_t0', 'd8_t0', 'd9_t0', 'd10_t0', 'res_chicago_location_t0', 'hiv_health', 'multiple_sex_t0'
     ],
 
@@ -206,13 +206,13 @@ module.exports = {
             'Male', 'Female', 'Cisgender Male', 'Cisgender Female', 'Transgender: Male to Female', 'Transgender: Female to Male', 'Not Listed'
         ],
         hiv_health: [
-            'Yes',
+            'yes',
             'No'
         ],
         multiple_sex_t0: [
-            'Yes',
-            'No',
-            'Skipped'
+            'yes',
+            'no',
+            'skipped'
         ],
         res_chicago_location_t0: [
             'Census Tract',
@@ -232,11 +232,17 @@ module.exports = {
         ],
         elicited_previously: [
             'True',
-            'null'
+            '[Remove variable]'
         ],
         gender_p_t0: [
-            'Male', 'Female', 'Cisgender Male', 'Cisgender Female', 'Transgender: Male to Female',
-            'Transgender: Female to Male', 'Don\'t Know', 'Not Listed'
+            'Male',
+            'Female',
+            'Cisgender Male',
+            'Cisgender Female',
+            'Transgender: Male to Female',
+            'Transgender: Female to Male',
+            'Don\'t Know',
+            'Not Listed'
         ],
         race_p_t0: [
             'Black/African American',
@@ -265,7 +271,8 @@ module.exports = {
         res_chicago_location_p_t0: [
             'Census Tract',
             'Jail',
-            'Homeless'
+            'Homeless',
+            '[Remove variable]'
         ],
         reltype_sub_t0: [
             'Best Friend', 'Friend', 'Ex-friend', 'Other Type', 'Parent/Guardian', 'Brother/Sister', 'Grandparent',
