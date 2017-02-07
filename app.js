@@ -1,5 +1,4 @@
 // TODO: Add way to browse and remove existing corrections.
-// TODO: Figure out how to represent variables that should be deleted.
 
 // Load NPM packages.
 var fs = require('fs');
@@ -600,18 +599,29 @@ function updateNode(node) {
 function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject) {
     if (loopCount < variables.length) {
         var variableName = variables[loopCount];
+
         if (dataObject) {
             var currentVariableValue = dataObject[variableName];
         }
-        var newValue = '';
+
+        var newValue;
         var variableChangePrompt;
+
+        // Initialize an array that will hold 0 or 1 item.
+        var deleteChoice = [];
+
+        // If the variable is in the 'deletableVariables' array in constants.js,
+        // push the option '[Delete]' which will be displayed as the last choice in the `choices` array.
+        if (cons.deletableVariables.indexOf(variableName) !== -1) {
+            deleteChoice.push('[Delete]');
+        }
 
         if (cons.tractVariables.indexOf(variableName) !== -1) {
             variableChangePrompt = [
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: cons.variableLists[variableName],
+                    choices: cons.variableLists[variableName].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 },
                 {
@@ -635,7 +645,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'checkbox',
-                    choices: cons.variableCheckboxes[dataObject.type],
+                    choices: cons.variableCheckboxes[dataObject.type].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
                 }
         } else if (variableName === 'radar_id') {
@@ -658,7 +668,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: cons.variableLists[variableName],
+                    choices: cons.variableLists[variableName].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.string.indexOf(variableName) !== -1) {
@@ -688,7 +698,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['-1', '0', '1', '2', '3'],
+                    choices: ['-1', '0', '1', '2', '3'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.negOneToTwo.indexOf(variableName) !== -1) {
@@ -696,7 +706,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['-1', '0', '1', '2'],
+                    choices: ['-1', '0', '1', '2'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.zeroToSix.indexOf(variableName) !== -1) {
@@ -704,7 +714,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['0', '1', '2', '3', '4', '5', '6'],
+                    choices: ['0', '1', '2', '3', '4', '5', '6'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.oneToNine.indexOf(variableName) !== -1) {
@@ -712,7 +722,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                    choices: ['1', '2', '3', '4', '5', '6', '7', '8', '9'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.binary.indexOf(variableName) !== -1) {
@@ -720,7 +730,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['0', '1'],
+                    choices: ['0', '1'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.boolean.indexOf(variableName) !== -1) {
@@ -728,7 +738,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                 {
                     name: 'newValue',
                     type: 'list',
-                    choices: ['true', 'false'],
+                    choices: ['true', 'false'].concat(deleteChoice),
                     message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                 }
         } else if (cons.variableTypes.date.indexOf(variableName) !== -1) {
@@ -737,7 +747,7 @@ function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject)
                     {
                         name: 'newValue',
                         type: 'list',
-                        choices: ['null', 'Date'],
+                        choices: ['null', 'Date'].concat(deleteChoice),
                         message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?',
                         when: variableName === 'sex_first_t0'
                     },

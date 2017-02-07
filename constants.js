@@ -50,7 +50,7 @@ module.exports = {
         'Renumber nodes/edges'
     ],
 
-    // List of node types.
+    // List of node types that might be created.
     nodeTypes: [
         'Alter',
         'HIVService',
@@ -81,7 +81,7 @@ module.exports = {
     // List of Ego node variables. NB: The only other kind of node with variables beyond type_t0/id is HIVService,
     // which only has `name` added, so that was easier to just hard code in.
     egoVariables: [
-        'radar_id', 'int_date_t0', 'int_stime_t0', 'int_ftime_t0', 'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0',
+        'radar_id', 'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0',
         'd7_t0', 'd8_t0', 'd9_t0', 'd10_t0', 'res_chicago_location_t0', 'hiv_health', 'multiple_sex_t0'
     ],
 
@@ -164,7 +164,7 @@ module.exports = {
     variableTypes: {
         string: [
             'nname_t0', 'fname_t0', 'lname_t0', 'label', 'name', 'gender_p_other_t0', 'race_p_other_t0',
-            'reason_not_visited', 'loc_met_detail_t0', 'venue_name_t0', 'res_city_p_t0'
+            'orient_p_other_t0', 'reason_not_visited', 'loc_met_detail_t0', 'venue_name_t0', 'res_city_p_t0'
         ],
         positiveInt: [
             'id', 'to', 'from', 'age_t0', 'anal_sex_freq_t0', 'anal_sex_condom_freq_t0',
@@ -177,9 +177,6 @@ module.exports = {
         ],
         negOneToTwo: [
             'relstr_t0', 'alcohol_freq_t0', 'drug_freq_t0', 'sex_freq_t0'
-        ],
-        zeroToSix: [
-            'reltype_main_t0'
         ],
         oneToNine: [
             'visit_number'
@@ -231,8 +228,7 @@ module.exports = {
             'perceived'
         ],
         elicited_previously: [
-            'True',
-            '[Remove variable]'
+            'True'
         ],
         gender_p_t0: [
             'Male',
@@ -271,8 +267,37 @@ module.exports = {
         res_chicago_location_p_t0: [
             'Census Tract',
             'Jail',
-            'Homeless',
-            '[Remove variable]'
+            'Homeless'
+        ],
+        reltype_main_t0: [
+            {
+                name: '0: Friend',
+                value: '0'
+            },
+            {
+                name: '1: Family/Relative',
+                value: '1'
+            },
+            {
+                name: '2: Romantic/Sexual Partner',
+                value: '2'
+            },
+            {
+                name: '3: Acquaintance/Associate',
+                value: '3'
+            },
+            {
+                name: '4: Other Support/Source of Advice',
+                value: '4'
+            },
+            {
+                name: '5: Drug Use',
+                value: '5'
+            },
+            {
+                name: '6: Other',
+                value: '6'
+            }
         ],
         reltype_sub_t0: [
             'Best Friend', 'Friend', 'Ex-friend', 'Other Type', 'Parent/Guardian', 'Brother/Sister', 'Grandparent',
@@ -319,6 +344,12 @@ module.exports = {
         provider_awareness: [
             'Yes',
             'No'
+        ],
+        ag_t0: [
+            'App'
+        ],
+        sex_last_before_range: [
+            'false'
         ]
     },
 
@@ -352,6 +383,14 @@ module.exports = {
             'Other medication'
         ]
     },
+
+    // Variables that the user should be able to remove.
+    deletableVariables: [
+        'res_city_p_t0', 'res_chicago_location_p_t0', 'elicited_previously', 'met_sex_t0',
+        'sexual_minorities','anal_sex_condom_freq_t0', 'anal_sex_freq_t0', 'vaginal_sex_condom_freq_t0',
+        'vaginal_sex_freq_t0', 'loc_met_detail_t0', 'gender_p_other_t0', 'race_p_other_t0', 'orient_p_other_t0',
+        'reason_not_visited', 'welcoming', 'visit_frequency', 'provider_awareness'
+    ],
 
     // Potential Chicago census tracts, for validating census tracts.
     chicagoCensusTracts: [
