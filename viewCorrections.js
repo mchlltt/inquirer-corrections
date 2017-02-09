@@ -3,12 +3,16 @@ module.exports = function () {
     // Load NPM packages.
     var fs = require('fs');
     var inquirer = require('inquirer');
+
+    // Initialize variables that will be used across functions.
     var allCorrections;
     var currentFile;
     var correctionFile;
 
     // Try to import path values. Don't worry if they weren't provided, though.
-    try { var paths = require('./paths.js'); }
+    try {
+        var paths = require('./paths.js');
+    } catch(e) {}
 
     readCorrections();
 
@@ -26,7 +30,12 @@ module.exports = function () {
 
             allCorrections = JSON.parse(data);
 
-            selectInterview();
+            if (Object.keys(allCorrections).length > 0) {
+                selectInterview();
+            } else {
+                console.log('No corrections found! ' +
+                    '\nIf this is unexpected, please verify the value of `corrections` in `paths.js`.')
+            }
         });
     }
 
@@ -74,7 +83,7 @@ module.exports = function () {
     }
 
     function confirmDelete(currentCorrection) {
-        var deleteQuestion  =
+        var deleteQuestion =
             {
                 name: 'confirmed',
                 type: 'confirm',
@@ -99,7 +108,9 @@ module.exports = function () {
         } else {
             // This file's value in allCorrections is an array of corrections.
             // Overwrite it with an array of corrections that doesn't include the one we want to remove.
-            allCorrections[currentFile] = corrections.filter(function(item) {return JSON.stringify(item) !== currentCorrection});
+            allCorrections[currentFile] = corrections.filter(function (item) {
+                return JSON.stringify(item) !== currentCorrection
+            });
         }
 
         // Write the updated allCorrections object to correctionFile.
@@ -115,7 +126,7 @@ module.exports = function () {
             message: 'Would you like to continue browsing corrections?'
         };
 
-        inquirer.prompt(exitQuestion).then(function(answers) {
+        inquirer.prompt(exitQuestion).then(function (answers) {
             if (answers.continue) {
                 // Restart script from where the interview was selected.
                 readCorrections();

@@ -166,7 +166,7 @@ module.exports = {
             'orient_p_other_t0', 'reason_not_visited', 'loc_met_detail_t0', 'venue_name_t0', 'res_city_p_t0'
         ],
         positiveInt: [
-            'id', 'to', 'from', 'age_t0', 'anal_sex_freq_t0', 'anal_sex_condom_freq_t0',
+            'id', 'to', 'from', 'age_p_t0', 'anal_sex_freq_t0', 'anal_sex_condom_freq_t0',
             'vaginal_sex_freq_t0', 'vaginal_sex_condom_freq_t0'
         ],
         negOneToThree: [
@@ -323,7 +323,7 @@ module.exports = {
         hiv_status_p_t0: [
             'HIV Negative',
             'HIV Positive',
-            'Don\t Know'
+            'Don\'t Know'
         ],
         venue_type_t0: [
             'Bar/Club',

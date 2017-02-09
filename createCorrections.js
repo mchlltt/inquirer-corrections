@@ -1,13 +1,14 @@
-module.exports = function() {
+module.exports = function () {
     // Load NPM packages.
     var fs = require('fs');
     var inquirer = require('inquirer');
 
 // Import constant values and path values (if provided).
     var cons = require('./constants.js');
-    try {
-        var paths = require('./paths.js');
-    } catch (e) {}
+    // try {
+    //     var paths = require('./paths.js');
+    // } catch (e) {
+    // }
 
 // Initialize filename and data variables in global scope.
     var currentFileName;
@@ -202,7 +203,7 @@ module.exports = function() {
                 when: function (answers) {
                     return answers.correctionType === 'Edge creation';
                 },
-                filter: function(response) {
+                filter: function (response) {
                     return response.split('/')[0];
                 }
             },
@@ -303,7 +304,9 @@ module.exports = function() {
             {
                 name: 'start',
                 type: 'list',
-                choices: currentNodeIDs.filter(function(id) {return id !== '0'}),
+                choices: currentNodeIDs.filter(function (id) {
+                    return id !== '0'
+                }),
                 message: 'Which is the first node that needs to be renumbered?'
             },
             {
@@ -311,7 +314,7 @@ module.exports = function() {
                 type: 'input',
                 message: 'What number needs to be added to each affected node ID?'
             }
-        ]).then(function(answers) {
+        ]).then(function (answers) {
             confirmCorrection({
                 start: answers.start,
                 offset: answers.offset
@@ -337,10 +340,10 @@ module.exports = function() {
                     name: 'otherFrom',
                     type: 'input',
                     message: 'Who is this edge `from`?',
-                    when: function(answers) {
+                    when: function (answers) {
                         return answers.from === 'Other node id';
                     },
-                    validate: function(answer) {
+                    validate: function (answer) {
                         var pattern = /\d+/;
                         if (pattern.test(answer) && currentNodeIDs.indexOf(answer) === -1) {
                             return true;
@@ -353,7 +356,7 @@ module.exports = function() {
                     name: 'to',
                     type: 'list',
                     message: 'Who is this edge `to`?',
-                    choices: function(answers) {
+                    choices: function (answers) {
                         // 'to' cannot be '0' or the same as 'from'
                         function isValidToValue(id) {
                             return id !== answers.from && id !== '0';
@@ -367,10 +370,10 @@ module.exports = function() {
                     name: 'otherTo',
                     type: 'input',
                     message: 'Who is this edge `to`?',
-                    when: function(answers) {
+                    when: function (answers) {
                         return answers.to === 'Other node id';
                     },
-                    validate: function(answer, answers) {
+                    validate: function (answer, answers) {
                         var pattern = /\d+/;
                         // test that the answer is a positive integer, not 0, not already in the list given, and
                         // not the same as the `otherFrom` value. `from` value test not needed because that would be in the list.
@@ -385,7 +388,7 @@ module.exports = function() {
                     }
                 }
             ]
-        ).then(function(answers) {
+        ).then(function (answers) {
             // Add `to` to the edge.
             if (answers.otherTo) {
                 newEdge.to = answers.otherTo;
@@ -467,7 +470,7 @@ module.exports = function() {
                 type: 'checkbox',
                 message: 'Which edges would you like to delete? Select all that apply.',
                 choices: currentEdgeIDs,
-                validate: function(response) {
+                validate: function (response) {
                     if (response.length > 0) {
                         return true;
                     } else {
@@ -480,8 +483,10 @@ module.exports = function() {
                 name: 'toDelete',
                 type: 'checkbox',
                 message: 'Which nodes would you like to delete? Select all that apply.',
-                choices: currentNodeIDs.filter(function(id) {return id !== '0'}),
-                validate: function(response) {
+                choices: currentNodeIDs.filter(function (id) {
+                    return id !== '0'
+                }),
+                validate: function (response) {
                     if (response.length > 0) {
                         return true;
                     } else {
@@ -491,7 +496,7 @@ module.exports = function() {
             }
         }
 
-        inquirer.prompt(deletePrompt).then( function(answers) {
+        inquirer.prompt(deletePrompt).then(function (answers) {
                 confirmCorrection({
                     ids: answers.toDelete
                 })
@@ -606,7 +611,7 @@ module.exports = function() {
                 var currentVariableValue = dataObject[variableName];
             }
 
-            var newValue;
+            var newValue = '';
             var variableChangePrompt;
 
             // Initialize an array that will hold 0 or 1 item.
@@ -615,7 +620,7 @@ module.exports = function() {
             // If the variable is in the 'deletableVariables' array in constants.js,
             // push the option '[Delete]' which will be displayed as the last choice in the `choices` array.
             if (cons.deletableVariables.indexOf(variableName) !== -1) {
-                deleteChoice.push('[Delete]');
+                deleteChoice = ['[Delete]'];
             }
 
             if (cons.tractVariables.indexOf(variableName) !== -1) {
@@ -647,7 +652,7 @@ module.exports = function() {
                     {
                         name: 'newValue',
                         type: 'checkbox',
-                        choices: cons.variableCheckboxes[dataObject.type].concat(deleteChoice),
+                        choices: cons.variableCheckboxes[dataObject.type],
                         message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
                     }
             } else if (variableName === 'radar_id') {
@@ -709,14 +714,6 @@ module.exports = function() {
                         name: 'newValue',
                         type: 'list',
                         choices: ['-1', '0', '1', '2'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.zeroToSix.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['0', '1', '2', '3', '4', '5', '6'].concat(deleteChoice),
                         message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                     }
             } else if (cons.variableTypes.oneToNine.indexOf(variableName) !== -1) {
@@ -828,7 +825,7 @@ module.exports = function() {
                         newValue = parseInt(newValue, 10);
                     }
 
-                    correctionsSoFar[variableName] =  newValue;
+                    correctionsSoFar[variableName] = newValue;
                     loopCount += 1;
                     getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
                 }
