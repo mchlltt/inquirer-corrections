@@ -41,10 +41,10 @@ module.exports = {
     correctionChoices: [
         'Node update',
         'Edge update',
-        'Node deletion',
-        'Edge deletion',
         'Node creation',
         'Edge creation',
+        'Node deletion',
+        'Edge deletion',
         'Interviewer ID update',
         'Remove interview from analysis',
         'Renumber nodes/edges'
@@ -102,15 +102,10 @@ module.exports = {
                 'reltype_main_t0', 'reltype_sub_t0'
             ]
         },
-        Drugs: {
-            optional: [
-                'd1_freq_p_t0', 'd2_freq_p_t0', 'd3_freq_p_t0', 'd4_freq_p_t0', 'd5_freq_p_t0', 'd6_freq_p_t0',
-                'd7_freq_p_t0', 'd8_freq_p_t0', 'd9_freq_p_t0', 'd10_freq_p_t0'
-            ]
-        },
         Drug: {
-            required: [
-                'k_or_p_t0'
+            optional: [
+                'k_or_p_t0', 'd1_freq_p_t0', 'd2_freq_p_t0', 'd3_freq_p_t0', 'd4_freq_p_t0', 'd5_freq_p_t0',
+                'd6_freq_p_t0', 'd7_freq_p_t0', 'd8_freq_p_t0', 'd9_freq_p_t0', 'd10_freq_p_t0'
             ]
         },
         Sex: {

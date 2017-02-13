@@ -45,7 +45,7 @@ module.exports = function () {
             name: 'interviewSelected',
             type: 'list',
             message: 'Which interview\'s corrections would you like to view?',
-            choices: Object.keys(allCorrections)
+            choices: Object.keys(allCorrections).sort()
         };
 
         inquirer.prompt(selectInterviewQuestion).then(function (answers) {

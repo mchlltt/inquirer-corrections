@@ -1,16 +1,18 @@
+// TODO: Write ID as int.
+
 module.exports = function () {
     // Load NPM packages.
     var fs = require('fs');
     var inquirer = require('inquirer');
 
-// Import constant values and path values (if provided).
+    // Import constant values and path values (if provided).
     var cons = require('./constants.js');
-    // try {
-    //     var paths = require('./paths.js');
-    // } catch (e) {
-    // }
+    try {
+        var paths = require('./paths.js');
+    } catch (e) {
+    }
 
-// Initialize filename and data variables in global scope.
+    // Initialize filename and data variables in global scope.
     var currentFileName;
     var currentData;
     var currentNodeIDs;
@@ -18,10 +20,10 @@ module.exports = function () {
     var objectID;
     var currentCorrectionType;
 
-// Run initial prompt.
+    // Run initial prompt.
     getIdentifyingData();
 
-// Initial prompt that takes ID and visit number.
+    // Initial prompt that takes ID and visit number.
     function getIdentifyingData() {
         // Initialize/empty these global variables.
         currentFileName = '';
@@ -32,7 +34,7 @@ module.exports = function () {
         inquirer.prompt(cons.fileIdentifyingQuestions).then(findFiles);
     }
 
-// Searches for files that parameters given.
+    // Searches for files that parameters given.
     function findFiles(answers) {
         var idPattern;
         var visitPattern = new RegExp('(V' + answers.visitNumber + ')');
@@ -71,7 +73,7 @@ module.exports = function () {
         });
     }
 
-// Ask the user to select between matching files.
+    // Ask the user to select between matching files.
     function confirmFile(files, path) {
         if (files.length === 0) {
             console.log('No files found. Let\'s start over.');
@@ -98,7 +100,7 @@ module.exports = function () {
         }
     }
 
-// Read in selected file.
+    // Read in selected file.
     function loadFile(answers, files, path) {
         if (answers.selectBetween) {
             currentFileName = path + answers.selectBetween;
@@ -152,7 +154,7 @@ module.exports = function () {
         }
     }
 
-// Ask the user which kind of correction they want to make + other basic info.
+    // Ask the user which kind of correction they want to make + other basic info.
     function chooseCorrection() {
         var intID;
         if (typeof(currentData.sessionParameters) !== 'undefined') {
@@ -166,6 +168,7 @@ module.exports = function () {
                 name: 'correctionType',
                 type: 'list',
                 message: 'What is the kind of correction you would like to make to this file?',
+                pageSize: 9,
                 choices: cons.correctionChoices
             },
             {
@@ -261,7 +264,7 @@ module.exports = function () {
         });
     }
 
-// If an edge or node ID was given, show the user the object they selected and confirm that it is the object they want to correct.
+    // If an edge or node ID was given, show the user the object they selected and confirm that it is the object they want to correct.
     function confirmID(ID) {
         var idConfirmQuestion;
         var currentObject;
@@ -322,7 +325,7 @@ module.exports = function () {
         });
     }
 
-// Creates base edge and determines which other variables will be added. Begin recursion through these variables.
+    // Creates base edge and determines which other variables will be added. Begin recursion through these variables.
     function createEdge(edgeType) {
         var newEdge = {
             type: edgeType
@@ -391,16 +394,16 @@ module.exports = function () {
         ).then(function (answers) {
             // Add `to` to the edge.
             if (answers.otherTo) {
-                newEdge.to = answers.otherTo;
+                newEdge.to = parseInt(answers.otherTo, 10);
             } else {
-                newEdge.to = answers.to;
+                newEdge.to = parseInt(answers.to, 10);
             }
 
             // Add `from` to the edge.
             if (answers.otherFrom) {
-                newEdge.from = answers.otherFrom;
+                newEdge.from = parseInt(answers.otherFrom, 10);
             } else {
-                newEdge.from = answers.from;
+                newEdge.from = parseInt(answers.from, 10);
             }
 
             // If this edge has variables other than id/type/to/from, grab those.
@@ -437,7 +440,7 @@ module.exports = function () {
         });
     }
 
-// Creates node edge and determines which other variables will be added. Begin recursion through these variables.
+    // Creates node edge and determines which other variables will be added. Begin recursion through these variables.
     function createNode(nodeType) {
         objectID = currentData.nodes[0].reserved_ids[currentData.nodes[0].reserved_ids.length - 1] + 1;
 
@@ -460,7 +463,7 @@ module.exports = function () {
 
     }
 
-// Determine which nodes or edges to delete.
+    // Determine which nodes or edges to delete.
     function deleteObjects() {
         var deletePrompt;
 
@@ -483,9 +486,7 @@ module.exports = function () {
                 name: 'toDelete',
                 type: 'checkbox',
                 message: 'Which nodes would you like to delete? Select all that apply.',
-                choices: currentNodeIDs.filter(function (id) {
-                    return id !== '0'
-                }),
+                choices: currentNodeIDs,
                 validate: function (response) {
                     if (response.length > 0) {
                         return true;
@@ -504,7 +505,7 @@ module.exports = function () {
         )
     }
 
-// Determine which variables will be updated/added/removed. Begin recursion through these variables.
+    // Determine which variables will be updated/added/removed. Begin recursion through these variables.
     function updateEdge(edge) {
         inquirer.prompt([
             {
@@ -551,7 +552,7 @@ module.exports = function () {
         });
     }
 
-// Determine which variables will be updated/added/removed. Begin recursion through these variables.
+    // Determine which variables will be updated/added/removed. Begin recursion through these variables.
     function updateNode(node) {
         inquirer.prompt([
             {
@@ -836,7 +837,7 @@ module.exports = function () {
         }
     }
 
-// Display the correction to the user and confirm whether it is correct.
+    // Display the correction to the user and confirm whether it is correct.
     function confirmCorrection(correction) {
         inquirer.prompt({
             name: 'changeApproval',
@@ -852,15 +853,16 @@ module.exports = function () {
         });
     }
 
-// If the correction was confirmed, add it to corrections.json.
+    // If the correction was confirmed, add it to corrections.json.
     function writeCorrectionToFile(correction) {
         var newCorrection = {
             type: currentCorrectionType,
-            correctData: correction
+            correctData: correction,
+            timestamp: Date.now()
         };
 
         if (objectID) {
-            newCorrection.id = objectID;
+            newCorrection.id = parseInt(objectID, 10);
         }
 
         var currentCorrections = {};
@@ -891,7 +893,7 @@ module.exports = function () {
         checkForMoreCorrections();
     }
 
-// After a correction is saved, ask the user for more corrections to this or other files. Pipe back as necessary.
+    // After a correction is saved, ask the user for more corrections to this or other files. Pipe back as necessary.
     function checkForMoreCorrections() {
         inquirer.prompt([
             {
