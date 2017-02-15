@@ -45,28 +45,46 @@ module.exports = function () {
             name: 'interviewSelected',
             type: 'list',
             message: 'Which interview\'s corrections would you like to view?',
-            choices: Object.keys(allCorrections).sort()
+            choices: function() {
+                choices = [];
+                // Iterate through all the keys, sorted by visit number then RADAR ID.
+                Object.keys(allCorrections).sort().forEach(function(item) {
+                    // Get the last item from the array produced by splitting on forward slashes.
+                    var name = item.split('/')[item.split('/').length - 1];
+                    // Use that last bit as the name, but the full path as the value.
+                    var choice = {name: name, value: item};
+                    // Add that choice object to the choices array.
+                    choices.push(choice);
+                });
+                return choices;
+            }
         };
 
         inquirer.prompt(selectInterviewQuestion).then(function (answers) {
+            // Save the answer to the global 'currentFile' variable.
             currentFile = answers.interviewSelected;
+            // Then call browseCorrections on this file.
             browseCorrections(currentFile);
         });
     }
 
     function browseCorrections(interviewPath) {
 
+        // The corrections for this specific interview.
         var theseCorrections = allCorrections[interviewPath];
+
+        // The corrections turned into an array of strings.
         var correctionsArray = theseCorrections.map(function (item) {
             return JSON.stringify(item)
         });
 
+        // Question to prompt user to delete or exit.
         var browseQuestion = {
             name: 'correctionChosen',
             type: 'list',
             message: '\nHere are all of the corrections associated with that file. ' +
             '\nIf you would like to delete a correction, select it now.' +
-            '\nIf you don\'t have any changes to make, select "Exit" and the end of the list.\n',
+            '\nIf you don\'t have any changes to make, select "Exit" at the end of the list.\n',
             choices: correctionsArray.concat([new inquirer.Separator, 'Exit'])
         };
 
@@ -119,6 +137,7 @@ module.exports = function () {
         askWhetherToStartOver();
     }
 
+    // Function for prompting the user to start over or exit the script.
     function askWhetherToStartOver() {
         var exitQuestion = {
             name: 'continue',
@@ -128,7 +147,7 @@ module.exports = function () {
 
         inquirer.prompt(exitQuestion).then(function (answers) {
             if (answers.continue) {
-                // Restart script from where the interview was selected.
+                // Restart script from the beginning.
                 readCorrections();
             } else {
                 // Exit script with message.

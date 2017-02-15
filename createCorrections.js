@@ -1,5 +1,3 @@
-// TODO: Write ID as int.
-
 module.exports = function () {
     // Load NPM packages.
     var fs = require('fs');
