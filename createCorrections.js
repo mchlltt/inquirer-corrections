@@ -313,12 +313,20 @@ module.exports = function () {
             {
                 name: 'offset',
                 type: 'input',
-                message: 'What number needs to be added to each affected node ID?'
+                message: 'What number needs to be added to each affected node ID?',
+                validate: function (answer) {
+                    var pattern = /\d+/;
+                    if (pattern.test(answer) && parseInt(answer, 10) > 0) {
+                        return true;
+                    } else {
+                        return 'Please enter a positive whole number.';
+                    }
+                }
             }
         ]).then(function (answers) {
             confirmCorrection({
-                start: answers.start,
-                offset: answers.offset
+                start: parseInt(answers.start, 10),
+                offset: parseInt(answers.offset, 10)
             });
         });
     }
