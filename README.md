@@ -10,7 +10,7 @@ A command-line Node.js tool for collecting JSON data corrections from a user. In
 - Run `git clone https://github.com/mchlltt/inquirer-corrections.git` or `git clone git@github.com:mchlltt/inquirer-corrections.git` to clone the repository.
 - Run `npm install` to install Inquirer and its dependencies.
 - Follow the data preparation instructions below.
-- Run `node app.js`.
+- Run `npm start`.
 
 ## Data preparation
 - Fill out and remove the `-template` from `corrections-template.json` before use. `corrections.json` is included in `.gitignore` to protect you from pushing private information to GitHub.
