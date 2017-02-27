@@ -156,35 +156,53 @@ module.exports = {
 
     // Sorts variables by their response types.
     variableTypes: {
-        string: [
-            'nname_t0', 'fname_t0', 'lname_t0', 'label', 'name', 'gender_p_other_t0', 'race_p_other_t0',
-            'orient_p_other_t0', 'reason_not_visited', 'loc_met_detail_t0', 'venue_name_t0', 'res_city_p_t0'
-        ],
-        positiveInt: [
-            'id', 'to', 'from', 'age_p_t0', 'anal_sex_freq_t0', 'anal_sex_condom_freq_t0',
-            'vaginal_sex_freq_t0', 'vaginal_sex_condom_freq_t0'
-        ],
-        negOneToThree: [
-            'comm_t0', 'd1_freq_p_t0', 'd2_freq_p_t0', 'd3_freq_p_t0', 'd4_freq_p_t0', 'd5_freq_p_t0',
-            'd6_freq_p_t0', 'd7_freq_p_t0', 'd8_freq_p_t0', 'd9_freq_p_t0', 'd10_freq_p_t0',
-            'venue_freq_t0', 'app_freq_t0', 'welcoming', 'visit_frequency'
-        ],
-        negOneToTwo: [
-            'relstr_t0', 'alcohol_freq_t0', 'drug_freq_t0', 'sex_freq_t0'
-        ],
-        oneToNine: [
-            'visit_number'
-        ],
-        binary: [
-            'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0', 'd7_t0', 'd8_t0', 'd9_t0', 'd10_t0', 'hispanic_p_t0',
-            'met_sex_t0', 'sexual_minorities'
-        ],
-        boolean: [
-            'sex_first_before_range', 'visited'
-        ],
-        date: [
-            'sex_first_t0', 'sex_last_t0'
-        ]
+        string: {
+            variables: [
+                'nname_t0', 'fname_t0', 'lname_t0', 'label', 'name', 'gender_p_other_t0', 'race_p_other_t0',
+                'orient_p_other_t0', 'reason_not_visited', 'loc_met_detail_t0', 'venue_name_t0', 'res_city_p_t0'
+            ]
+        },
+        positiveInt: {
+            variables: [
+                'id', 'age_p_t0', 'anal_sex_freq_t0', 'anal_sex_condom_freq_t0', 'to',
+                'vaginal_sex_freq_t0', 'vaginal_sex_condom_freq_t0'
+            ],
+            validate: function (answers) {
+                            var pattern = /\d+/;
+                            if (pattern.test(answers) && parseInt(answers, 10) >= 0) {
+                                return true;
+                            } else {
+                                return 'Please enter a non-negative whole number.';
+                            }
+                        }
+        },
+        negOneToThree: { 
+            variables: [
+                'comm_t0', 'd1_freq_p_t0', 'd2_freq_p_t0', 'd3_freq_p_t0', 'd4_freq_p_t0', 'd5_freq_p_t0',
+                'd6_freq_p_t0', 'd7_freq_p_t0', 'd8_freq_p_t0', 'd9_freq_p_t0', 'd10_freq_p_t0',
+                'venue_freq_t0', 'app_freq_t0', 'welcoming', 'visit_frequency'
+            ],
+            choices: ['-1', '0', '1', '2', '3']
+        },
+        negOneToTwo: {
+            variables: [
+                'relstr_t0', 'alcohol_freq_t0', 'drug_freq_t0', 'sex_freq_t0'
+            ],
+            choices: ['-1', '0', '1', '2']
+        },
+        binary: {
+            variables: [
+                'd1_t0', 'd2_t0', 'd3_t0', 'd4_t0', 'd5_t0', 'd6_t0', 'd7_t0', 'd8_t0', 'd9_t0', 'd10_t0', 'hispanic_p_t0',
+                'met_sex_t0', 'sexual_minorities'
+            ],
+            choices: ['0', '1']
+        },
+        boolean: {
+            variables: [
+                'sex_first_before_range', 'visited'
+            ],
+            choices: ['true', 'false']
+        }
     },
 
     // For variables with a set of options, these options are provided.
@@ -344,6 +362,9 @@ module.exports = {
         ],
         sex_last_before_range: [
             'false'
+        ],
+        visit_number: [
+            '1', '2', '3', '4', '5', '6', '7', '8', '9'
         ]
     },
 
@@ -353,6 +374,27 @@ module.exports = {
         'res_chicago_location_p_t0',
         'location'
     ],
+
+    // Variables that can take date values.
+    dateVariables: [
+        'sex_first_t0',
+        'sex_last_t0'
+    ],
+
+    // Variables that should be ignored when collecting values in getNewVariableValue.
+    unchangeableVariables: [
+        'type_t0', 'reserved_ids', 'int_date_t0', 'int_stime_t0', 'int_ftime_t0', 'type', 'coords', 'from'
+    ],
+
+    // Validation function for RADAR IDs.
+    radarIDvalidate: function (response) {
+                            var pattern = /^\d\d\d\d$/;
+                            if (pattern.test(response)) {
+                                return true;
+                            } else {
+                                return 'Please enter 4 digits.';
+                            }
+    },
 
     // For HadTreatment/etc. edges, the options are provided here.
     variableCheckboxes: {

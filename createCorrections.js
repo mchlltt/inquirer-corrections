@@ -102,7 +102,7 @@ module.exports = function () {
     function loadFile(answers, files, path) {
         if (answers.selectBetween) {
             currentFileName = path + answers.selectBetween;
-            console.log(currentFileName);
+
             fs.readFile(currentFileName, 'utf8', function (error, data) {
                 if (error) {
                     console.log(error);
@@ -471,44 +471,40 @@ module.exports = function () {
 
     // Determine which nodes or edges to delete.
     function deleteObjects() {
-        var deletePrompt;
+        var deleteChoices;
+        var deleteMessage;
 
         if (currentCorrectionType === 'Edge deletion') {
-            deletePrompt = {
-                name: 'toDelete',
-                type: 'checkbox',
-                message: 'Which edges would you like to delete? Select all that apply.',
-                choices: currentEdgeIDs,
-                validate: function (response) {
-                    if (response.length > 0) {
-                        return true;
-                    } else {
-                        return 'Please select at least one edge to delete.'
-                    }
-                }
-            };
-        } else {
-            deletePrompt = {
-                name: 'toDelete',
-                type: 'checkbox',
-                message: 'Which nodes would you like to delete? Select all that apply.',
-                choices: currentNodeIDs,
-                validate: function (response) {
-                    if (response.length > 0) {
-                        return true;
-                    } else {
-                        return 'Please select at least one node to delete.'
-                    }
-                }
-            }
+            deleteChoices = currentEdgeIDs;
+            deleteMessage = 'Which edges would you like to delete? Select all that apply.'  
+        } else if (currentCorrectionType === 'Node deletion') {
+            deleteChoices = currentNodeIDs;
+            deleteMessage = 'Which nodes would you like to delete? Select all that apply.'
         }
 
-        inquirer.prompt(deletePrompt).then(function (answers) {
-                confirmCorrection({
-                    ids: answers.toDelete
-                })
+        var deletePrompt = {
+            name: 'toDelete',
+            type: 'checkbox',
+            message: deleteMessage,
+            choices: deleteChoices,
+            validate: function (response) {
+                if (response.length > 0) {
+                    return true;
+                } else {
+                    return 'Please select at least one item to delete.'
+                }
             }
-        )
+
+        };         
+
+        inquirer.prompt(deletePrompt).then(function (answers) {
+            
+            var correction = {
+                ids: answers.toDelete
+            };
+
+            confirmCorrection(correction);
+        });
     }
 
     // Determine which variables will be updated/added/removed. Begin recursion through these variables.
@@ -606,6 +602,17 @@ module.exports = function () {
         });
     }
 
+    // Iterates through the variable types and returns the type that the variable belongs to.
+    function getVariableType(variableName) {
+        var type = '';
+        Object.keys(cons.variableTypes).forEach(function(variableType) {
+            if (cons.variableTypes[variableType].variables.indexOf(variableName) !== -1) {
+                type = variableType;
+            }
+        });
+        return cons.variableTypes[type];
+    }
+
     /*
      Recursively accumulate new variable values for all needed variables. When all variables have been assigned
      new values, pass the accumulated data to confirmCorrections.
@@ -613,231 +620,176 @@ module.exports = function () {
     function getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject) {
         if (loopCount < variables.length) {
             var variableName = variables[loopCount];
+            if (cons.unchangeableVariables.indexOf(variableName) === -1) {
+                if (dataObject) {
+                    var currentVariableValue = dataObject[variableName];
+                }
 
-            if (dataObject) {
-                var currentVariableValue = dataObject[variableName];
-            }
+                var newValue = '';
+                var variableChangePrompt;
 
-            var newValue = '';
-            var variableChangePrompt;
+                // Initialize an array that will hold 0 or 1 item.
+                var deleteChoice = [];
 
-            // Initialize an array that will hold 0 or 1 item.
-            var deleteChoice = [];
+                // If the variable is in the 'deletableVariables' array in constants.js,
+                // push the option '[Delete]' which will be displayed as the last choice in the `choices` array.
+                if (cons.deletableVariables.indexOf(variableName) !== -1) {
+                    deleteChoice = ['[Delete]'];
+                }
 
-            // If the variable is in the 'deletableVariables' array in constants.js,
-            // push the option '[Delete]' which will be displayed as the last choice in the `choices` array.
-            if (cons.deletableVariables.indexOf(variableName) !== -1) {
-                deleteChoice = ['[Delete]'];
-            }
-
-            if (cons.tractVariables.indexOf(variableName) !== -1) {
-                variableChangePrompt = [
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: cons.variableLists[variableName].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    },
-                    {
-                        name: 'newTract',
-                        type: 'input',
-                        message: 'What census tract should ' + variableName + ' be set to? \ngeo_5jrd-6zik-',
-                        when: function (answers) {
-                            return answers.newValue === 'Census Tract';
-                        },
-                        validate: function (answer) {
-                            if (cons.chicagoCensusTracts.indexOf('geo_5jrd-6zik-' + answer) !== -1) {
-                                return true;
-                            } else {
-                                return 'Please enter only the portion of the census tract (as found in Network Canvas) that comes after "geo_5jrd-6zik-".';
-                            }
-                        }
-                    }
-                ]
-            } else if (variableName === 'details') {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'checkbox',
-                        choices: cons.variableCheckboxes[dataObject.type],
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
-                    }
-            } else if (variableName === 'radar_id') {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?',
-                        validate: function (response) {
-                            var pattern = /^\d\d\d\d$/;
-                            if (pattern.test(response)) {
-                                return true;
-                            } else {
-                                return 'Please enter 4 digits.';
-                            }
-                        }
-                    }
-            } else if (Object.keys(cons.variableLists).indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: cons.variableLists[variableName].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.string.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?'
-                    }
-            } else if (cons.variableTypes.positiveInt.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?',
-                        validate: function (answers) {
-                            var pattern = /\d+/;
-                            if (pattern.test(answers) && parseInt(answers, 10) >= 0) {
-                                return true;
-                            } else {
-                                return 'Please enter a non-negative whole number.';
-                            }
-                        }
-                    }
-            } else if (cons.variableTypes.negOneToThree.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['-1', '0', '1', '2', '3'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.negOneToTwo.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['-1', '0', '1', '2'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.oneToNine.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['1', '2', '3', '4', '5', '6', '7', '8', '9'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.binary.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['0', '1'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.boolean.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'list',
-                        choices: ['true', 'false'].concat(deleteChoice),
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
-                    }
-            } else if (cons.variableTypes.date.indexOf(variableName) !== -1) {
-                variableChangePrompt =
-                    [
+                if (cons.tractVariables.indexOf(variableName) !== -1) {
+                    variableChangePrompt = [
                         {
                             name: 'newValue',
                             type: 'list',
-                            choices: ['null', 'Date'].concat(deleteChoice),
-                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?',
-                            when: variableName === 'sex_first_t0'
+                            choices: cons.variableLists[variableName].concat(deleteChoice),
+                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
                         },
                         {
-                            name: 'month',
+                            name: 'newTract',
                             type: 'input',
-                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the MONTH be set to? (MM)',
-                            validate: function (answers) {
-                                var pattern = /\d\d/;
-                                if (pattern.test(answers) && parseInt(answers, 10) <= 12 && parseInt(answers, 10) >= 1) {
+                            message: 'What census tract should ' + variableName + ' be set to? \ngeo_5jrd-6zik-',
+                            when: function (answers) {
+                                return answers.newValue === 'Census Tract';
+                            },
+                            validate: function (answer) {
+                                if (cons.chicagoCensusTracts.indexOf('geo_5jrd-6zik-' + answer) !== -1) {
                                     return true;
                                 } else {
-                                    return 'Please enter a valid month in the format "MM".';
+                                    return 'Please enter only the portion of the census tract (as found in Network Canvas) that comes after "geo_5jrd-6zik-".';
                                 }
-                            },
-                            when: function (answers) {
-                                return variableName === 'sex_last_t0' || answers.newValue === 'Date';
-                            }
-                        },
-                        {
-                            name: 'day',
-                            type: 'input',
-                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the DAY be set to? (DD)',
-                            validate: function (answers) {
-                                var pattern = /\d\d/;
-                                if (pattern.test(answers) && parseInt(answers, 10) <= 31 && parseInt(answers, 10) >= 1) {
-                                    return true;
-                                } else {
-                                    return 'Please enter a valid day in the format "DD".';
-                                }
-                            },
-                            when: function (answers) {
-                                return variableName === 'sex_last_t0' || answers.newValue === 'Date';
-                            }
-
-                        },
-                        {
-                            name: 'year',
-                            type: 'input',
-                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the YEAR be set to? (YYYY)',
-                            validate: function (answers) {
-                                var pattern = /\d\d\d\d/;
-                                var maxYear = new Date().getFullYear();
-                                if (pattern.test(answers) && parseInt(answers, 10) <= maxYear && parseInt(answers, 10) >= 1900) {
-                                    return true;
-                                } else {
-                                    return 'Please enter a valid year in the format "YYYY".';
-                                }
-                            },
-                            when: function (answers) {
-                                return variableName === 'sex_last_t0' || answers.newValues === 'Date';
                             }
                         }
-                    ];
-            } else {
-                variableChangePrompt =
-                    {
-                        name: 'newValue',
-                        type: 'input',
-                        message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?'
-                    }
-            }
+                    ]
+                } else if (variableName === 'details') {
+                    variableChangePrompt =
+                        {
+                            name: 'newValue',
+                            type: 'checkbox',
+                            choices: cons.variableCheckboxes[dataObject.type],
+                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to? Select ALL that apply.'
+                        }
+                } else if (variableName === 'radar_id') {
+                    variableChangePrompt =
+                        {
+                            name: 'newValue',
+                            type: 'input',
+                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?',
+                            validate: cons.radarIDvalidate
+                        }
+                } else if (Object.keys(cons.variableLists).indexOf(variableName) !== -1) {
+                    variableChangePrompt =
+                        {
+                            name: 'newValue',
+                            type: 'list',
+                            choices: cons.variableLists[variableName].concat(deleteChoice),
+                            message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?'
+                        }
+                } else if (cons.dateVariables.indexOf(variableName) !== -1) {
+                    variableChangePrompt =
+                        [
+                            {
+                                name: 'newValue',
+                                type: 'list',
+                                choices: ['null', 'Date'].concat(deleteChoice),
+                                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhich of the following should it be set to?',
+                                when: variableName === 'sex_first_t0'
+                            },
+                            {
+                                name: 'month',
+                                type: 'input',
+                                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the MONTH be set to? (MM)',
+                                validate: function (answers) {
+                                    var pattern = /\d\d/;
+                                    if (pattern.test(answers) && parseInt(answers, 10) <= 12 && parseInt(answers, 10) >= 1) {
+                                        return true;
+                                    } else {
+                                        return 'Please enter a valid month in the format "MM".';
+                                    }
+                                },
+                                when: function (answers) {
+                                    return variableName === 'sex_last_t0' || answers.newValue === 'Date';
+                                }
+                            },
+                            {
+                                name: 'day',
+                                type: 'input',
+                                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the DAY be set to? (DD)',
+                                validate: function (answers) {
+                                    var pattern = /\d\d/;
+                                    if (pattern.test(answers) && parseInt(answers, 10) <= 31 && parseInt(answers, 10) >= 1) {
+                                        return true;
+                                    } else {
+                                        return 'Please enter a valid day in the format "DD".';
+                                    }
+                                },
+                                when: function (answers) {
+                                    return variableName === 'sex_last_t0' || answers.newValue === 'Date';
+                                }
 
-            inquirer.prompt(variableChangePrompt).then(
-                function (answers) {
-                    if (answers.year) {
-                        newValue = answers.month + '/' + answers.day + '/' + answers.year
-                    } else if (answers.newValue === 'Census Tract') {
-                        newValue = 'geo_5jrd-6zik-' + answers.newTract;
+                            },
+                            {
+                                name: 'year',
+                                type: 'input',
+                                message: 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should the YEAR be set to? (YYYY)',
+                                validate: function (answers) {
+                                    var pattern = /\d\d\d\d/;
+                                    var maxYear = new Date().getFullYear();
+                                    if (pattern.test(answers) && parseInt(answers, 10) <= maxYear && parseInt(answers, 10) >= 1900) {
+                                        return true;
+                                    } else {
+                                        return 'Please enter a valid year in the format "YYYY".';
+                                    }
+                                },
+                                when: function (answers) {
+                                    return variableName === 'sex_last_t0' || answers.newValues === 'Date';
+                                }
+                            }
+                        ];
+                } else {
+                    variableChangePrompt = {};
+                    variableChangePrompt.name = 'newValue';
+                    variableChangePrompt.message = 'The current value for ' + variableName + ' is ' + currentVariableValue + '.\nWhat should it be set to?';
+
+                    var variableType = getVariableType(variableName);
+
+                    if (variableType.choices) {
+                        variableChangePrompt.type = 'list';
+                        variableChangePrompt.choices = variableType.choices.concat(deleteChoice);
                     } else {
-                        newValue = answers.newValue;
+                        variableChangePrompt.type = 'input';
                     }
 
-                    // Test equality *with* type coercion. Leave RADAR IDs as strings.
-                    if (newValue == parseInt(newValue, 10) && variableName !== 'radar_id') {
-                        newValue = parseInt(newValue, 10);
+                    if (variableType.validate) {
+                        variableChangePrompt.validate = variableType.validate;
                     }
 
-                    correctionsSoFar[variableName] = newValue;
-                    loopCount += 1;
-                    getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
                 }
-            );
 
+                inquirer.prompt(variableChangePrompt).then(
+                    function (answers) {
+                        if (answers.year) {
+                            newValue = answers.month + '/' + answers.day + '/' + answers.year
+                        } else if (answers.newValue === 'Census Tract') {
+                            newValue = 'geo_5jrd-6zik-' + answers.newTract;
+                        } else {
+                            newValue = answers.newValue;
+                        }
+
+                        // Test equality *with* type coercion. Leave RADAR IDs as strings.
+                        if (newValue == parseInt(newValue, 10) && variableName !== 'radar_id') {
+                            newValue = parseInt(newValue, 10);
+                        }
+
+                        correctionsSoFar[variableName] = newValue;
+                        loopCount += 1;
+                        getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
+                    }
+                );
+            } else {
+                loopCount += 1;
+                getNewVariableValue(loopCount, variables, correctionsSoFar, dataObject);
+            }
         } else {
             confirmCorrection(correctionsSoFar);
         }
